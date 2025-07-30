@@ -1,13 +1,37 @@
+package lox;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static java.lang.Character.isDigit;
+import static lox.TokenType.*;
 
 class Scanner {
     private final String source;
     private final List<Token> tokens = new ArrayList<>();
+    private static final Map<String, TokenType> keywords;
+    static {
+        keywords = new HashMap<>();
+        keywords.put("and",    AND);
+        keywords.put("class",  CLASS);
+
+        keywords.put("else",   ELSE);
+        keywords.put("false",  FALSE);
+        keywords.put("for",    FOR);
+        keywords.put("fun",    FUN);
+        keywords.put("if",     IF);
+        keywords.put("nil",    NIL);
+        keywords.put("or",     OR);
+        keywords.put("print",  PRINT);
+        keywords.put("return", RETURN);
+        keywords.put("super",  SUPER);
+        keywords.put("this",   THIS);
+        keywords.put("true",   TRUE);
+        keywords.put("var",    VAR);
+        keywords.put("while",  WHILE);
+    }
+
     private int start = 0;
     private int current = 0;
     private int line = 1;
@@ -23,12 +47,24 @@ class Scanner {
             scanToken();
         }
 
-        tokens.add(new Token(TokenType.EOF, "", null, line));
+        tokens.add(new Token(EOF, "", null, line));
         return tokens;
     }
 
     private boolean isAtEnd() {
         return current >= source.length();
+    }
+
+    private boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+
+    private boolean isAlpha(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
+    private boolean isAlphaNumeric(char c) {
+        return isDigit(c) || isAlpha(c);
     }
 
     private char advance() {
@@ -78,7 +114,7 @@ class Scanner {
 
         // Trim the surrounding quotes.
         String value = source.substring(start + 1, current - 1);
-        addToken(TokenType.STRING, value);
+        addToken(STRING, value);
     }
 
     private void number() {
@@ -96,23 +132,33 @@ class Scanner {
                 Double.parseDouble(source.substring(start, current)));
     }
 
+    private void identifier() {
+        while (isAlphaNumeric(peek())) advance();
+
+        String text = source.substring(start, current);
+        TokenType type = keywords.get(text);
+        if (type == null) type = IDENTIFIER;
+
+        addToken(type);
+    }
+
     private void scanToken() {
         char c = advance();
         switch (c) {
-            case '(': addToken(TokenType.LEFT_PAREN); break;
-            case ')': addToken(TokenType.RIGHT_PAREN); break;
-            case '{': addToken(TokenType.LEFT_BRACE); break;
-            case '}': addToken(TokenType.RIGHT_BRACE); break;
-            case ',': addToken(TokenType.COMMA); break;
-            case '.': addToken(TokenType.DOT); break;
-            case '-': addToken(TokenType.MINUS); break;
-            case '+': addToken(TokenType.PLUS); break;
-            case ';': addToken(TokenType.SEMICOLON); break;
-            case '*': addToken(TokenType.STAR); break;
-            case '!': addToken(match('=') ? TokenType.BANG_EQUAL : TokenType.BANG); break;
-            case '>': addToken(match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER); break;
-            case '<': addToken(match('=') ? TokenType.LESS_EQUAL : TokenType.EQUAL); break;
-            case '=': addToken(match('=') ? TokenType.EQUAL_EQUAL : TokenType.EQUAL); break;
+            case '(': addToken(LEFT_PAREN); break;
+            case ')': addToken(RIGHT_PAREN); break;
+            case '{': addToken(LEFT_BRACE); break;
+            case '}': addToken(RIGHT_BRACE); break;
+            case ',': addToken(COMMA); break;
+            case '.': addToken(DOT); break;
+            case '-': addToken(MINUS); break;
+            case '+': addToken(PLUS); break;
+            case ';': addToken(SEMICOLON); break;
+            case '*': addToken(STAR); break;
+            case '!': addToken(match('=') ? BANG_EQUAL : BANG); break;
+            case '>': addToken(match('=') ? GREATER_EQUAL : GREATER); break;
+            case '<': addToken(match('=') ? LESS_EQUAL : EQUAL); break;
+            case '=': addToken(match('=') ? EQUAL_EQUAL : EQUAL); break;
             case '/': {
                 if (match('/'))
                 {
@@ -121,7 +167,7 @@ class Scanner {
                 }
                 else
                 {
-                    addToken(TokenType.SLASH);
+                    addToken(SLASH);
                 }
                 break;
             }
@@ -139,7 +185,11 @@ class Scanner {
             default:
                 if (isDigit(c)) {
                     number();
-                } else {
+                }
+                else if (isAlphaNumeric(c)) {
+                    identifier();
+                }
+                else {
                     Lox.error(line, "Unexpected character.");
                 }
                 break;
