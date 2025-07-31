@@ -32,14 +32,13 @@ import java.util.List;
 
 public class GenerateAst {
     public static void main(String[] args) throws IOException {
-        if (args.length != 1)
-        {
+        if (args.length != 1) {
             System.out.println("Usage: GenerateAst <output_folder>");
             System.exit(64);
         }
 
         String outputFolder = args[0];
-        generateAst(outputFolder, "Expr", Arrays.asList(
+        defineAst(outputFolder, "Expr", Arrays.asList(
                 "Binary   : Expr left, Token operator, Expr right",
                 "Grouping : Expr expression",
                 "Literal  : Object value",
@@ -47,7 +46,7 @@ public class GenerateAst {
         ));
     }
 
-    private static void generateAst(String outputFolder, String baseName, List<String> types) throws IOException {
+    private static void defineAst(String outputFolder, String baseName, List<String> types) throws IOException {
         String path = String.format("%s/%s.java", outputFolder, baseName);
         PrintWriter writer = new PrintWriter(path, "UTF-8");
 
@@ -57,8 +56,9 @@ public class GenerateAst {
         writer.println();
         writer.println("abstract class " + baseName + " {");
 
-        for (String type: types)
-        {
+        defineVisitor(writer, baseName, types);
+
+        for (String type : types) {
             String className = type.split(":")[0].trim();
             String fields = type.split(":")[1].trim();
             defineType(writer, baseName, className, fields);
@@ -68,23 +68,35 @@ public class GenerateAst {
         writer.close();
     }
 
-    private static void defineType(PrintWriter writer, String baseName, String className, String fields)
-    {
+    private static void defineType(PrintWriter writer, String baseName, String className, String fields) {
         writer.printf("    static class %s extends %s {\n", className, baseName);
         writer.printf("      %s(%s) {\n", className, fields);
         String[] fieldList = fields.split(",");
-        for (String field: fieldList)
-        {
+        for (String field : fieldList) {
             // System.out.println(field);
             String name = field.trim().split(" ")[1];
             writer.printf("      this.%s = %s;\n", name, name);
         }
         writer.printf("    }\n\n");
 
-        for (String field: fieldList)
-        {
-            writer.printf("    final %s;\n", field);
+        for (String field : fieldList) {
+            writer.printf("      final %s;\n", field.strip());
         }
-        writer.printf("  }\n\n");
+        writer.printf("    }\n\n");
     }
+
+    private static void defineVisitor(
+            PrintWriter writer, String baseName, List<String> types) {
+        writer.println("    interface Visitor<R> {");
+
+        for (String type : types) {
+            String typeName = type.split(":")[0].trim();
+            writer.println("      R visit" + typeName + baseName + "(" +
+                    typeName + " " + baseName.toLowerCase() + ");");
+        }
+
+        writer.println("    }");
+        writer.println();
+    }
+
 }
